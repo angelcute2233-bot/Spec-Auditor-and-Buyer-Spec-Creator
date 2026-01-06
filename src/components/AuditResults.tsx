@@ -27,77 +27,104 @@ export default function AuditResults({
     setExpandedSpecs(newExpanded);
   };
 
-  // Merge audit results with original specs
-  const allDisplaySpecs = originalSpecs.map(spec => {
-    const matchingResult = auditResults.find(r => 
-      r.specification.toLowerCase() === spec.spec_name.toLowerCase() ||
-      isSemanticallySimilar(r.specification, spec.spec_name)
-    );
-    
-    return {
-      ...spec,
-      auditResult: matchingResult || {
-        specification: spec.spec_name,
-        status: "correct",
-        explanation: "",
-        problematic_options: []
-      }
-    };
-  });
+  // Categorize specs by tier
+  const configSpecs = originalSpecs.filter(spec => spec.tier === "Config");
+  const keySpecs = originalSpecs.filter(spec => spec.tier === "Key");
+  const regularSpecs = originalSpecs.filter(spec => spec.tier === "Regular");
 
-  const correctCount = allDisplaySpecs.filter(s => s.auditResult.status === "correct").length;
-  const incorrectCount = allDisplaySpecs.filter(s => s.auditResult.status === "incorrect").length;
+  // Merge audit results with original specs
+  const getMergedSpecs = (specs: UploadedSpec[]) => {
+    return specs.map(spec => {
+      const matchingResult = auditResults.find(r => 
+        r.specification.toLowerCase() === spec.spec_name.toLowerCase() ||
+        isSemanticallySimilar(r.specification, spec.spec_name)
+      );
+      
+      return {
+        ...spec,
+        auditResult: matchingResult || {
+          specification: spec.spec_name,
+          status: "correct",
+          explanation: "",
+          problematic_options: []
+        }
+      };
+    });
+  };
+
+  const mergedConfigSpecs = getMergedSpecs(configSpecs);
+  const mergedKeySpecs = getMergedSpecs(keySpecs);
+  const mergedRegularSpecs = getMergedSpecs(regularSpecs);
+
+  const allSpecs = [...mergedConfigSpecs, ...mergedKeySpecs, ...mergedRegularSpecs];
+  const correctCount = allSpecs.filter(s => s.auditResult.status === "correct").length;
+  const incorrectCount = allSpecs.filter(s => s.auditResult.status === "incorrect").length;
   const allCorrect = incorrectCount === 0;
 
-  // Simple clean component
+  // Component to render specification card
   const SpecCard = ({ spec, index }: { spec: any; index: number }) => {
     const isCorrect = spec.auditResult.status === "correct";
     const isExpanded = expandedSpecs.has(spec.spec_name);
     const hasIssues = !isCorrect && spec.auditResult.explanation;
 
+    // Get color based on tier
+    const getTierColor = (tier: string) => {
+      switch(tier) {
+        case "Config": return "purple";
+        case "Key": return "blue";
+        case "Regular": return "gray";
+        default: return "gray";
+      }
+    };
+
+    const tierColor = getTierColor(spec.tier || "Regular");
+    const bgColors = {
+      purple: isCorrect ? "bg-purple-50" : "bg-red-50",
+      blue: isCorrect ? "bg-blue-50" : "bg-red-50",
+      gray: isCorrect ? "bg-gray-50" : "bg-red-50"
+    };
+    
+    const borderColors = {
+      purple: isCorrect ? "border-purple-200" : "border-red-300",
+      blue: isCorrect ? "border-blue-200" : "border-red-300",
+      gray: isCorrect ? "border-gray-200" : "border-red-300"
+    };
+
     return (
       <div
-        className={`border rounded-lg mb-4 overflow-hidden ${
-          isCorrect
-            ? "border-gray-200 bg-white hover:bg-gray-50"
-            : "border-red-200 bg-red-50 hover:bg-red-100"
-        } transition-colors`}
+        className={`border rounded mb-3 overflow-hidden ${bgColors[tierColor]} ${borderColors[tierColor]}`}
       >
-        {/* Header - Clean and simple */}
-        <div className="p-4">
+        {/* Specification Header */}
+        <div className={`p-3 ${isCorrect ? "bg-white" : "bg-red-50"}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {isCorrect ? (
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle className="text-green-600" size={18} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                  <XCircle className="text-red-600" size={18} />
-                </div>
-              )}
+            <div className="flex items-center gap-2 flex-1">
+              <div className={`w-2 h-8 rounded ${isCorrect ? 
+                tierColor === "purple" ? "bg-purple-500" : 
+                tierColor === "blue" ? "bg-blue-500" : "bg-gray-500"
+                : "bg-red-500"}`}
+              ></div>
               <div>
-                <h3 className={`font-semibold ${isCorrect ? "text-gray-900" : "text-red-900"}`}>
-                  {spec.spec_name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  {isCorrect ? (
+                    <CheckCircle className="text-green-600" size={16} />
+                  ) : (
+                    <XCircle className="text-red-600" size={16} />
+                  )}
+                  <h3 className={`text-sm font-semibold ${isCorrect ? "text-gray-900" : "text-red-900"}`}>
+                    {spec.spec_name}
+                  </h3>
+                </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs px-2 py-1 rounded ${isCorrect ? 
-                    spec.tier === "Primary" ? "bg-blue-100 text-blue-800" :
-                    spec.tier === "Secondary" ? "bg-green-100 text-green-800" :
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    tierColor === "purple" ? "bg-purple-100 text-purple-800" :
+                    tierColor === "blue" ? "bg-blue-100 text-blue-800" :
                     "bg-gray-100 text-gray-800"
-                    : "bg-red-100 text-red-800"}`}
-                  >
-                    {spec.tier === "Primary" ? "Config" : 
-                     spec.tier === "Secondary" ? "Key" : "Regular"}
+                  }`}>
+                    {spec.tier || "Regular"}
                   </span>
                   <span className="text-xs text-gray-500">
                     {spec.options.length} options
                   </span>
-                  {spec.input_type && (
-                    <span className="text-xs text-gray-500">
-                      • {spec.input_type}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -105,34 +132,29 @@ export default function AuditResults({
             {hasIssues && (
               <button
                 onClick={() => toggleExpanded(spec.spec_name)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg border transition-all hover:bg-gray-50"
+                className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded text-xs font-medium flex-shrink-0"
               >
-                {isExpanded ? "Hide Details" : "View Issues"}
-                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {isExpanded ? "Hide" : "Details"}
+                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
             )}
           </div>
 
-          {/* Issues Section */}
+          {/* Expandable Explanation */}
           {hasIssues && isExpanded && spec.auditResult.explanation && (
-            <div className="mt-4 p-4 bg-white border border-red-100 rounded-lg">
-              <div className="flex items-start gap-2 mb-3">
-                <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5"></div>
-                <div>
-                  <h4 className="font-medium text-red-900 mb-1">Issues Found</h4>
-                  <p className="text-red-700 text-sm">{spec.auditResult.explanation}</p>
-                </div>
-              </div>
+            <div className="mt-3 p-3 bg-white border border-red-200 rounded text-xs">
+              <h4 className="font-semibold text-red-900 mb-2">Issues Found:</h4>
+              <p className="text-red-800 mb-3">{spec.auditResult.explanation}</p>
               
               {spec.auditResult.problematic_options && 
                spec.auditResult.problematic_options.length > 0 && (
-                <div className="mt-3">
-                  <h5 className="font-medium text-red-800 mb-2 text-sm">Problematic Options:</h5>
-                  <div className="flex flex-wrap gap-2">
+                <div>
+                  <h5 className="font-medium text-red-800 mb-2">Problematic Options:</h5>
+                  <div className="flex flex-wrap gap-1">
                     {spec.auditResult.problematic_options.map((option: string, optIdx: number) => (
                       <span
                         key={optIdx}
-                        className="px-3 py-1.5 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm"
+                        className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs border border-red-300"
                       >
                         {option}
                       </span>
@@ -144,35 +166,27 @@ export default function AuditResults({
           )}
         </div>
 
-        {/* Options Section - Clean grid */}
-        <div className="px-4 pb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">All Options</span>
-            <span className={`text-xs px-2 py-1 rounded ${isCorrect ? "bg-gray-100 text-gray-600" : "bg-red-100 text-red-600"}`}>
-              {spec.options.length} total
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        {/* Options */}
+        <div className="p-3 border-t border-gray-100">
+          <div className="flex flex-wrap gap-1">
             {spec.options.map((option: string, oIdx: number) => {
               const isProblematic = spec.auditResult.problematic_options?.includes(option);
 
               return (
-                <div
+                <span
                   key={oIdx}
-                  className={`p-2.5 rounded-lg border text-sm ${isProblematic
-                    ? "bg-red-50 border-red-300 text-red-900"
-                    : isCorrect
-                      ? "bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100"
-                      : "bg-gray-50 border-gray-200 text-gray-800"
+                  className={`px-2 py-1 rounded text-xs ${
+                    isProblematic
+                      ? "bg-red-200 text-red-900 border border-red-400"
+                      : isCorrect
+                        ? (tierColor === "purple" ? "bg-purple-100 text-purple-900" :
+                           tierColor === "blue" ? "bg-blue-100 text-blue-900" :
+                           "bg-gray-100 text-gray-900")
+                        : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    {isProblematic && (
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    )}
-                    <span className="truncate">{option}</span>
-                  </div>
-                </div>
+                  {option}
+                </span>
               );
             })}
           </div>
@@ -182,152 +196,122 @@ export default function AuditResults({
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Audit Results</h1>
-            <p className="text-gray-600 mt-1">Review and verify your product specifications</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className={`px-4 py-2 rounded-lg ${allCorrect ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
-              <div className="flex items-center gap-2">
-                {allCorrect ? (
-                  <CheckCircle size={18} />
-                ) : (
-                  <XCircle size={18} />
-                )}
-                <span className="font-medium">
-                  {allCorrect ? "All Good" : `${incorrectCount} Issues`}
-                </span>
-              </div>
+    <div>
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Audit Results</h2>
+        <p className="text-gray-600 text-sm">Review specifications audit</p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded p-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="text-green-600" size={18} />
+            <div>
+              <p className="text-lg font-bold text-green-900">{correctCount}</p>
+              <p className="text-xs text-green-700">Correct</p>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Specifications</p>
-                <p className="text-3xl font-bold text-gray-900">{allDisplaySpecs.length}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                <span className="text-gray-700 font-medium">{allDisplaySpecs.length}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-green-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-700 mb-1">Correct</p>
-                <p className="text-3xl font-bold text-green-900">{correctCount}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle className="text-green-600" size={20} />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-red-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-red-700 mb-1">Need Fix</p>
-                <p className="text-3xl font-bold text-red-900">{incorrectCount}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <XCircle className="text-red-600" size={20} />
-              </div>
+        <div className="bg-red-50 border border-red-200 rounded p-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="text-red-600" size={18} />
+            <div>
+              <p className="text-lg font-bold text-red-900">{incorrectCount}</p>
+              <p className="text-xs text-red-700">Need Fix</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tier Categories */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-3 h-8 bg-blue-500 rounded"></div>
-          <h2 className="text-xl font-bold text-gray-900">Config Specifications (Primary)</h2>
-          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-            {allDisplaySpecs.filter(s => s.tier === "Primary").length}
-          </span>
+      {/* Config Specifications */}
+      {mergedConfigSpecs.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-4 h-4 bg-purple-500 rounded"></div>
+            <h3 className="text-md font-bold text-gray-900">Config Specifications</h3>
+            <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs">
+              {mergedConfigSpecs.length}
+            </span>
+          </div>
+          {mergedConfigSpecs.map((spec, idx) => (
+            <SpecCard key={idx} spec={spec} index={idx} />
+          ))}
         </div>
-        {allDisplaySpecs.filter(s => s.tier === "Primary").map((spec, idx) => (
-          <SpecCard key={idx} spec={spec} index={idx} />
-        ))}
-      </div>
+      )}
 
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-3 h-8 bg-green-500 rounded"></div>
-          <h2 className="text-xl font-bold text-gray-900">Key Specifications (Secondary)</h2>
-          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-            {allDisplaySpecs.filter(s => s.tier === "Secondary").length}
-          </span>
+      {/* Key Specifications */}
+      {mergedKeySpecs.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+            <h3 className="text-md font-bold text-gray-900">Key Specifications</h3>
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+              {mergedKeySpecs.length}
+            </span>
+          </div>
+          {mergedKeySpecs.map((spec, idx) => (
+            <SpecCard key={idx} spec={spec} index={idx} />
+          ))}
         </div>
-        {allDisplaySpecs.filter(s => s.tier === "Secondary").map((spec, idx) => (
-          <SpecCard key={idx} spec={spec} index={idx} />
-        ))}
-      </div>
+      )}
 
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-3 h-8 bg-gray-400 rounded"></div>
-          <h2 className="text-xl font-bold text-gray-900">Regular Specifications (Tertiary)</h2>
-          <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
-            {allDisplaySpecs.filter(s => s.tier === "Tertiary").length}
-          </span>
+      {/* Regular Specifications */}
+      {mergedRegularSpecs.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-4 h-4 bg-gray-500 rounded"></div>
+            <h3 className="text-md font-bold text-gray-900">Regular Specifications</h3>
+            <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
+              {mergedRegularSpecs.length}
+            </span>
+          </div>
+          {mergedRegularSpecs.map((spec, idx) => (
+            <SpecCard key={idx} spec={spec} index={idx} />
+          ))}
         </div>
-        {allDisplaySpecs.filter(s => s.tier === "Tertiary").map((spec, idx) => (
-          <SpecCard key={idx} spec={spec} index={idx} />
-        ))}
-      </div>
+      )}
 
-      {/* Final Status and Next Step */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-8 mb-8">
-        <div className="max-w-2xl mx-auto text-center">
-          {allCorrect ? (
-            <>
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="text-green-600" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">All Specifications Verified!</h3>
-              <p className="text-gray-600 mb-6">
-                Your {correctCount} specifications have passed the audit. You can proceed to extract buyer specifications from websites.
+      {/* Status Message */}
+      {allCorrect ? (
+        <div className="mb-4 p-3 bg-green-50 border border-green-300 rounded">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="text-green-600" size={16} />
+            <div>
+              <p className="font-medium text-green-900 text-sm">All specifications are correct!</p>
+              <p className="text-xs text-green-700 mt-0.5">
+                Ready for next stage.
               </p>
-            </>
-          ) : (
-            <>
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <XCircle className="text-red-600" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Review Needed</h3>
-              <p className="text-gray-600 mb-4">
-                {incorrectCount} out of {allDisplaySpecs.length} specifications need your attention. 
-                You can either fix them now or proceed to the next stage.
-              </p>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 inline-block">
-                <p className="text-yellow-800 text-sm">
-                  <span className="font-medium">Tip:</span> Review the highlighted specifications above before proceeding.
-                </p>
-              </div>
-            </>
-          )}
-
-          {showNextStepButton && (
-            <button
-              onClick={onProceedToStage2}
-              className="mt-8 w-full max-w-md mx-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl"
-            >
-              <RefreshCw size={20} />
-              <span className="text-lg">Extract Buyer ISQs using Website Benchmarking</span>
-            </button>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded">
+          <div className="flex items-center gap-2">
+            <XCircle className="text-red-600" size={16} />
+            <div>
+              <p className="font-medium text-red-900 text-sm">Issues found in {incorrectCount} specification(s)</p>
+              <p className="text-xs text-red-700 mt-0.5">
+                Review highlighted specifications above.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Next Step Button */}
+      {showNextStepButton && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <button
+            onClick={onProceedToStage2}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded hover:from-blue-700 hover:to-blue-800 transition text-sm"
+          >
+            <RefreshCw size={14} />
+            Extract Buyer ISQs using Website Benchmarking
+          </button>
+        </div>
+      )}
     </div>
   );
 }
