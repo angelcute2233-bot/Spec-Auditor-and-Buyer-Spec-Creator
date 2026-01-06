@@ -259,6 +259,7 @@ Task:
 Rules:
 - DO NOT generate new specifications or options
 - DO NOT suggest random corrections
+- BE STRICT and find REAL issues
 - Only return "correct" or "incorrect" and explanation if incorrect
 - If an option lists different units in the SAME entry (e.g., "1219 mm (4 ft)") → this is CORRECT
 - If multiple SEPARATE options represent the same value in different units → this is INCORRECT (overlapping)
