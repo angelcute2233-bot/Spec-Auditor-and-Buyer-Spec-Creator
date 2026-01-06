@@ -657,6 +657,8 @@ export function selectStage3BuyerISQs(
   stage2: { config: ISQ; keys: ISQ[]; buyers?: ISQ[] }
 ): ISQ[] {
   console.log('🔍 selectStage3BuyerISQs called');
+  console.log('Stage 1 data:', stage1);
+  console.log('Stage 2 data:', stage2);
 
   // 1️⃣ Flatten Stage1 specs with priority
   const stage1All: (ISQ & { 
@@ -696,21 +698,54 @@ export function selectStage3BuyerISQs(
     });
   });
 
+  console.log('📊 Stage1 specs flattened:', stage1All.length);
+  stage1All.forEach((s, i) => console.log(`  ${i+1}. ${s.spec_name} (${s.tier}) - ${s.options?.length || 0} options`));
+
   // 2️⃣ Flatten Stage2 specs
-  const stage2All: (ISQ & { normName: string; priority: number })[] = [
-    { ...stage2.config, options: stage2.config.options || [], priority: 3 }, // Config ISQ highest priority
-    ...stage2.keys.map(k => ({ ...k, options: k.options || [], priority: 2 })), // Keys medium priority
-    ...(stage2.buyers || []).map(b => ({ ...b, options: b.options || [], priority: 1 })) // Buyers lowest priority
-  ]
-  .map(s => ({ 
-    ...s, 
-    normName: normalizeSpecName(s.name)
-  }));
+  const stage2All: (ISQ & { normName: string; priority: number })[] = [];
+  
+  // Add Config ISQ
+  if (stage2.config && stage2.config.name && stage2.config.options?.length > 0) {
+    stage2All.push({ 
+      ...stage2.config, 
+      options: stage2.config.options || [], 
+      priority: 3,
+      normName: normalizeSpecName(stage2.config.name)
+    });
+  }
+  
+  // Add Keys ISQs
+  if (stage2.keys && stage2.keys.length > 0) {
+    stage2.keys.forEach(k => {
+      if (k.name && k.options?.length > 0) {
+        stage2All.push({ 
+          ...k, 
+          options: k.options || [], 
+          priority: 2,
+          normName: normalizeSpecName(k.name)
+        });
+      }
+    });
+  }
+  
+  // Add Buyers ISQs
+  if (stage2.buyers && stage2.buyers.length > 0) {
+    stage2.buyers.forEach(b => {
+      if (b.name && b.options?.length > 0) {
+        stage2All.push({ 
+          ...b, 
+          options: b.options || [], 
+          priority: 1,
+          normName: normalizeSpecName(b.name)
+        });
+      }
+    });
+  }
 
-  console.log('📊 Stage1 specs:', stage1All.length);
-  console.log('📊 Stage2 specs:', stage2All.length);
+  console.log('📊 Stage2 specs flattened:', stage2All.length);
+  stage2All.forEach((s, i) => console.log(`  ${i+1}. ${s.name} (Priority: ${s.priority}) - ${s.options?.length || 0} options`));
 
-  // 3️⃣ Find common specs - IMPROVED LOGIC
+  // 3️⃣ Find common specs - EXACT OR SEMANTIC MATCHING
   const commonSpecs: (ISQ & { 
     tier: string; 
     normName: string; 
@@ -722,7 +757,11 @@ export function selectStage3BuyerISQs(
   })[] = [];
 
   stage1All.forEach(s1 => {
-    const matchingStage2 = stage2All.filter(s2 => s2.normName === s1.normName);
+    // Find matching Stage2 specs
+    const matchingStage2 = stage2All.filter(s2 => 
+      s2.normName === s1.normName || 
+      isSemanticallySimilar(s1.spec_name || s1.name, s2.name)
+    );
     
     if (matchingStage2.length > 0) {
       // Find the best matching Stage2 spec (highest priority)
@@ -739,6 +778,8 @@ export function selectStage3BuyerISQs(
         stage1Options: s1.options,
         stage2Options: bestMatch.options
       });
+      
+      console.log(`✅ Found common: ${s1.spec_name} (Stage1: ${s1.tier}, Stage2: ${bestMatch.name})`);
     }
   });
 
@@ -747,7 +788,7 @@ export function selectStage3BuyerISQs(
 
   if (commonSpecs.length === 0) {
     console.log('⚠️ No common specs found');
-    return [];
+    return []; // Return empty array if no common specs
   }
 
   // 4️⃣ Sort by combined priority (highest first)
@@ -775,9 +816,10 @@ export function selectStage3BuyerISQs(
     console.log(`✅ Added buyer ISQ: ${spec.spec_name} with ${options.length} options`);
   }
 
-  console.log('🎉 Final buyer ISQs:', buyerISQs.length);
+  console.log('🎉 Final buyer ISQs:', buyerISQs);
   return buyerISQs;
 }
+
 
 // IMPROVED FUNCTION TO GET OPTIMIZED OPTIONS
 function getOptimizedBuyerISQOptions(
