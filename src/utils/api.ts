@@ -239,7 +239,7 @@ function buildAuditPrompt(input: AuditInput): string {
     })
     .join("\n\n");
 
-  return `You are an industrial product specification auditor.
+  return `ou are a STRICT industrial specification auditor. Your task is to find REAL problems.
 
 MCAT Name: ${input.mcat_name}
 
