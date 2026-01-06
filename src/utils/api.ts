@@ -251,7 +251,8 @@ Task:
 - For each specification, check if it is relevant to the MCAT "${input.mcat_name}"
 - For each option, check for:
   • Irrelevance to the specification or MCAT
-  • Duplicates (exact duplicates or same value listed multiple times)
+  • Duplicates (exact duplicates or same value listed multiple times) 
+   Example: "SS304", "ss304" → INCORRECT (duplicate, just different case)
   • Overlapping values (e.g., same measurement in multiple separate options like "1219 mm" AND "4 ft" as separate entries)
 
 Rules:
