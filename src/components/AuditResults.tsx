@@ -6,7 +6,6 @@ interface AuditResultsProps {
   auditResults: AuditResult[];
   originalSpecs: UploadedSpec[];
   onProceedToStage2: () => void;
-  onReplaceSpec?: (specName: string, correctedOptions: string[]) => void;
   showNextStepButton?: boolean;
 }
 
@@ -52,35 +51,36 @@ export default function AuditResults({
 
   return (
     <div>
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Stage 1: Specification Audit Results</h2>
-        <p className="text-gray-600">Review the audit results for your specifications</p>
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Stage 1: Audit Results</h2>
+        <p className="text-gray-600 text-sm">Review specification audit results</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="text-green-600" size={32} />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-green-50 border border-green-200 rounded p-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="text-green-600" size={18} />
             <div>
-              <p className="text-3xl font-bold text-green-900">{correctCount}</p>
-              <p className="text-sm text-green-700">Correct Specifications</p>
+              <p className="text-lg font-bold text-green-900">{correctCount}</p>
+              <p className="text-xs text-green-700">Correct</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <XCircle className="text-red-600" size={32} />
+        <div className="bg-red-50 border border-red-200 rounded p-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="text-red-600" size={18} />
             <div>
-              <p className="text-3xl font-bold text-red-900">{incorrectCount}</p>
-              <p className="text-sm text-red-700">Incorrect Specifications</p>
+              <p className="text-lg font-bold text-red-900">{incorrectCount}</p>
+              <p className="text-xs text-red-700">Incorrect</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Display all specifications */}
-      <div className="space-y-4 mb-8">
+      {/* Specifications List */}
+      <div className="space-y-3 mb-4">
         {displaySpecs.map((spec, idx) => {
           const isCorrect = spec.auditResult.status === "correct";
           const isExpanded = expandedSpecs.has(spec.spec_name);
@@ -89,29 +89,29 @@ export default function AuditResults({
           return (
             <div
               key={idx}
-              className={`border-2 rounded-lg overflow-hidden ${
+              className={`border rounded overflow-hidden ${
                 isCorrect
-                  ? "border-green-300 bg-green-50"
-                  : "border-red-300 bg-red-50"
+                  ? "border-green-200 bg-green-50"
+                  : "border-red-200 bg-red-50"
               }`}
             >
               {/* Specification Header */}
-              <div className={`p-5 ${isCorrect ? "bg-green-100" : "bg-red-100"}`}>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
+              <div className={`p-3 ${isCorrect ? "bg-green-100" : "bg-red-100"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-1">
                     {isCorrect ? (
-                      <CheckCircle className="text-green-600 flex-shrink-0 mt-1" size={24} />
+                      <CheckCircle className="text-green-600 flex-shrink-0" size={16} />
                     ) : (
-                      <XCircle className="text-red-600 flex-shrink-0 mt-1" size={24} />
+                      <XCircle className="text-red-600 flex-shrink-0" size={16} />
                     )}
-                    <div className="flex-1">
-                      <h3 className={`text-lg font-semibold ${
+                    <div>
+                      <h3 className={`text-sm font-semibold ${
                         isCorrect ? "text-green-900" : "text-red-900"
                       }`}>
                         {spec.spec_name}
                       </h3>
                       {spec.tier && (
-                        <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
+                        <span className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-xs font-medium ${
                           isCorrect
                             ? "bg-green-200 text-green-800"
                             : "bg-red-200 text-red-800"
@@ -125,29 +125,29 @@ export default function AuditResults({
                   {hasIssues && (
                     <button
                       onClick={() => toggleExpanded(spec.spec_name)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 rounded-lg transition text-sm font-medium"
+                      className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded text-xs font-medium flex-shrink-0"
                     >
-                      {isExpanded ? "Hide Details" : "Show Details"}
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      {isExpanded ? "Hide" : "Details"}
+                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                     </button>
                   )}
                 </div>
 
                 {/* Expandable Explanation */}
                 {hasIssues && isExpanded && spec.auditResult.explanation && (
-                  <div className="mt-4 p-4 bg-white border border-red-200 rounded-lg">
-                    <h4 className="font-semibold text-red-900 mb-2">Issues Found:</h4>
-                    <p className="text-red-800 text-sm">{spec.auditResult.explanation}</p>
+                  <div className="mt-2 p-2 bg-white border border-red-200 rounded text-xs">
+                    <h4 className="font-semibold text-red-900 mb-1">Issues:</h4>
+                    <p className="text-red-800 mb-2">{spec.auditResult.explanation}</p>
                     
                     {spec.auditResult.problematic_options && 
                      spec.auditResult.problematic_options.length > 0 && (
-                      <div className="mt-3">
-                        <h5 className="font-medium text-red-800 mb-2">Problematic Options:</h5>
-                        <div className="flex flex-wrap gap-2">
+                      <div>
+                        <h5 className="font-medium text-red-800 mb-1">Problematic Options:</h5>
+                        <div className="flex flex-wrap gap-1">
                           {spec.auditResult.problematic_options.map((option, optIdx) => (
                             <span
                               key={optIdx}
-                              className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm border border-red-300"
+                              className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-xs border border-red-300"
                             >
                               {option}
                             </span>
@@ -159,19 +159,18 @@ export default function AuditResults({
                 )}
               </div>
 
-              {/* All Options */}
-              <div className="p-5">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Options:</h4>
-                <div className="flex flex-wrap gap-2">
+              {/* Options */}
+              <div className="p-3">
+                <div className="flex flex-wrap gap-1">
                   {spec.options.map((option, oIdx) => {
                     const isProblematic = spec.auditResult.problematic_options?.includes(option);
 
                     return (
                       <span
                         key={oIdx}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                        className={`px-2 py-1 rounded text-xs ${
                           isProblematic
-                            ? "bg-red-200 text-red-900 border-2 border-red-400"
+                            ? "bg-red-200 text-red-900 border border-red-400"
                             : isCorrect
                               ? "bg-green-200 text-green-900 border border-green-300"
                               : "bg-gray-100 text-gray-700 border border-gray-300"
@@ -190,51 +189,42 @@ export default function AuditResults({
 
       {/* Status Message */}
       {allCorrect ? (
-        <div className="mb-6 p-4 bg-green-50 border-2 border-green-300 rounded-lg">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="text-green-600" size={24} />
+        <div className="mb-3 p-3 bg-green-50 border border-green-300 rounded">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="text-green-600" size={16} />
             <div>
-              <p className="font-semibold text-green-900">All specifications are correct!</p>
-              <p className="text-sm text-green-700 mt-1">
-                All {correctCount} specifications have been verified and are ready for the next stage.
-              </p>
+              <p className="font-medium text-green-900 text-sm">All specifications are correct!</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
-          <div className="flex items-center gap-3">
-            <XCircle className="text-red-600" size={24} />
+        <div className="mb-3 p-3 bg-red-50 border border-red-300 rounded">
+          <div className="flex items-center gap-2">
+            <XCircle className="text-red-600" size={16} />
             <div>
-              <p className="font-semibold text-red-900">Issues found in {incorrectCount} specification(s)</p>
-              <p className="text-sm text-red-700 mt-1">
-                Review the highlighted specifications above. You can proceed, but consider fixing the issues first.
-              </p>
+              <p className="font-medium text-red-900 text-sm">Issues found in {incorrectCount} specification(s)</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Next Step Button - SMALLER AND AT BOTTOM */}
+      {/* Next Step Button */}
       {showNextStepButton && (
-        <div className="mt-8">
+        <div className="mt-4 pt-3 border-t border-gray-200">
           <button
             onClick={onProceedToStage2}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition text-sm"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded hover:from-blue-700 hover:to-blue-800 transition text-sm"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={14} />
             Extract Buyer ISQs using Website Benchmarking
           </button>
-          <p className="text-xs text-gray-500 mt-2">
-            Proceed to Stage 2 to extract buyer specifications from sellers' websites
-          </p>
         </div>
       )}
     </div>
   );
 }
 
-// Helper function (same as in api.ts)
+// Helper function
 function isSemanticallySimilar(spec1: string, spec2: string): boolean {
   const normalize = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]/g, ' ');
   const norm1 = normalize(spec1);
