@@ -63,3 +63,29 @@ export interface ComparisonResult {
   chatgpt_unique_specs: string[];
   gemini_unique_specs: string[];
 }
+
+export interface UploadedSpec {
+  spec_name: string;
+  options: string[];
+  input_type?: string;
+  tier?: "Primary" | "Secondary" | "Tertiary";
+}
+
+export interface AuditInput {
+  mcat_name: string;
+  specifications: UploadedSpec[];
+}
+
+export interface AuditResult {
+  specification: string;
+  status: "correct" | "incorrect";
+  explanation?: string;
+  problematic_options?: string[];
+}
+
+export interface CorrectedSpec {
+  spec_name: string;
+  options: string[];
+  input_type?: string;
+  tier?: string;
+}

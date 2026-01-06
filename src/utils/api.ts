@@ -1,4 +1,4 @@
-import type { InputData, Stage1Output, ISQ, ExcelData } from "../types";
+import type { InputData, Stage1Output, ISQ, ExcelData, AuditInput, AuditResult } from "../types";
 
 function normalizeSpecName(name: string): string {
   let normalized = name.toLowerCase().trim();
@@ -181,6 +181,114 @@ function extractJSONFromGemini(response) {
 
 const STAGE1_API_KEY = (import.meta.env.VITE_STAGE1_API_KEY || "").trim();
 const STAGE2_API_KEY = (import.meta.env.VITE_STAGE2_API_KEY || "").trim();
+
+export async function auditSpecificationsWithGemini(
+  input: AuditInput
+): Promise<AuditResult[]> {
+  if (!STAGE1_API_KEY) {
+    throw new Error("Stage 1 API key is not configured. Please add VITE_STAGE1_API_KEY to your .env file.");
+  }
+
+  const prompt = buildAuditPrompt(input);
+
+  try {
+    const response = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${STAGE1_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 4096,
+            responseMimeType: "application/json"
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+    const result = extractJSONFromGemini(data);
+
+    if (result && Array.isArray(result)) {
+      return result;
+    }
+
+    return [];
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
+    if (errorMsg.includes("429") || errorMsg.includes("quota")) {
+      console.error("Stage 1 API Key quota exhausted or rate limited");
+      throw new Error("Stage 1 API key quota exhausted. Please check your API limits.");
+    }
+
+    console.warn("Audit API error:", error);
+    throw error;
+  }
+}
+
+function buildAuditPrompt(input: AuditInput): string {
+  const specsText = input.specifications
+    .map((spec, idx) => {
+      return `${idx + 1}. Specification: "${spec.spec_name}"
+   Options: ${spec.options.map(opt => `"${opt}"`).join(", ")}
+   Input Type: ${spec.input_type || "N/A"}
+   Tier: ${spec.tier || "N/A"}`;
+    })
+    .join("\n\n");
+
+  return `You are an industrial product specification auditor.
+
+MCAT Name: ${input.mcat_name}
+
+Specifications to Audit:
+${specsText}
+
+Task:
+- For each specification, check if it is relevant to the MCAT "${input.mcat_name}"
+- For each option, check for:
+  • Irrelevance to the specification or MCAT
+  • Duplicates (exact duplicates or same value listed multiple times)
+  • Overlapping values (e.g., same measurement in multiple separate options like "1219 mm" AND "4 ft" as separate entries)
+
+Rules:
+- DO NOT generate new specifications or options
+- DO NOT suggest random corrections
+- Only return "correct" or "incorrect" and explanation if incorrect
+- If an option lists different units in the SAME entry (e.g., "1219 mm (4 ft)") → this is CORRECT
+- If multiple SEPARATE options represent the same value in different units → this is INCORRECT (overlapping)
+- If an option appears multiple times with exactly the same value → this is INCORRECT (duplicate)
+- If a specification is completely irrelevant to "${input.mcat_name}" → mark as INCORRECT with explanation
+- If an option is irrelevant to the specification → mark as INCORRECT and list it in problematic_options
+
+Output Format (JSON Array):
+[
+  {
+    "specification": "Grade",
+    "status": "correct"
+  },
+  {
+    "specification": "Width",
+    "status": "incorrect",
+    "explanation": "1219 mm and 4 ft listed separately → overlapping units. 1500 mm appears twice → duplicate.",
+    "problematic_options": ["1219 mm", "4 ft", "1500 mm"]
+  },
+  {
+    "specification": "Application",
+    "status": "incorrect",
+    "explanation": "Specification not relevant for ${input.mcat_name}. Option 'Capacity' is irrelevant.",
+    "problematic_options": ["Capacity"]
+  }
+]
+
+CRITICAL:
+- Return ONLY valid JSON array
+- NO text before or after the JSON
+- NO markdown code blocks
+- Output must start with [ and end with ]`;
+}
 
 export async function generateStage1WithGemini(
   input: InputData
