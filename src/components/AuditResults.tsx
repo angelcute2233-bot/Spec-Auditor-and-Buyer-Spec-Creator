@@ -28,8 +28,27 @@ export default function AuditResults({
     setExpandedSpecs(newExpanded);
   };
 
-  const correctCount = auditResults.filter((r) => r.status === "correct").length;
-  const incorrectCount = auditResults.filter((r) => r.status === "incorrect").length;
+  // Merge audit results with original specs for display
+  const displaySpecs = originalSpecs.map(spec => {
+    const matchingResult = auditResults.find(r => 
+      r.specification.toLowerCase() === spec.spec_name.toLowerCase() ||
+      isSemanticallySimilar(r.specification, spec.spec_name)
+    );
+    
+    return {
+      ...spec,
+      auditResult: matchingResult || {
+        specification: spec.spec_name,
+        status: "correct",
+        explanation: "",
+        problematic_options: []
+      }
+    };
+  });
+
+  const correctCount = displaySpecs.filter(s => s.auditResult.status === "correct").length;
+  const incorrectCount = displaySpecs.filter(s => s.auditResult.status === "incorrect").length;
+  const allCorrect = incorrectCount === 0;
 
   return (
     <div>
@@ -60,13 +79,12 @@ export default function AuditResults({
         </div>
       </div>
 
+      {/* Display all specifications */}
       <div className="space-y-4 mb-8">
-        {auditResults.map((result, idx) => {
-          const originalSpec = originalSpecs.find(
-            (s) => s.spec_name === result.specification
-          );
-          const isExpanded = expandedSpecs.has(result.specification);
-          const isCorrect = result.status === "correct";
+        {displaySpecs.map((spec, idx) => {
+          const isCorrect = spec.auditResult.status === "correct";
+          const isExpanded = expandedSpecs.has(spec.spec_name);
+          const hasIssues = !isCorrect && spec.auditResult.explanation;
 
           return (
             <div
@@ -77,11 +95,8 @@ export default function AuditResults({
                   : "border-red-300 bg-red-50"
               }`}
             >
-              <div
-                className={`p-5 ${
-                  isCorrect ? "bg-green-100" : "bg-red-100"
-                }`}
-              >
+              {/* Specification Header */}
+              <div className={`p-5 ${isCorrect ? "bg-green-100" : "bg-red-100"}`}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1">
                     {isCorrect ? (
@@ -93,24 +108,24 @@ export default function AuditResults({
                       <h3 className={`text-lg font-semibold ${
                         isCorrect ? "text-green-900" : "text-red-900"
                       }`}>
-                        {result.specification}
+                        {spec.spec_name}
                       </h3>
-                      {originalSpec?.tier && (
+                      {spec.tier && (
                         <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
                           isCorrect
                             ? "bg-green-200 text-green-800"
                             : "bg-red-200 text-red-800"
                         }`}>
-                          {originalSpec.tier}
+                          {spec.tier}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {!isCorrect && result.explanation && (
+                  {hasIssues && (
                     <button
-                      onClick={() => toggleExpanded(result.specification)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-red-200 hover:bg-red-300 text-red-800 rounded-lg transition text-sm font-medium"
+                      onClick={() => toggleExpanded(spec.spec_name)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 rounded-lg transition text-sm font-medium"
                     >
                       {isExpanded ? "Hide Details" : "Show Details"}
                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -118,61 +133,115 @@ export default function AuditResults({
                   )}
                 </div>
 
-                {!isCorrect && isExpanded && result.explanation && (
+                {/* Expandable Explanation */}
+                {hasIssues && isExpanded && spec.auditResult.explanation && (
                   <div className="mt-4 p-4 bg-white border border-red-200 rounded-lg">
                     <h4 className="font-semibold text-red-900 mb-2">Issues Found:</h4>
-                    <p className="text-red-800 text-sm">{result.explanation}</p>
+                    <p className="text-red-800 text-sm">{spec.auditResult.explanation}</p>
+                    
+                    {spec.auditResult.problematic_options && 
+                     spec.auditResult.problematic_options.length > 0 && (
+                      <div className="mt-3">
+                        <h5 className="font-medium text-red-800 mb-2">Problematic Options:</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {spec.auditResult.problematic_options.map((option, optIdx) => (
+                            <span
+                              key={optIdx}
+                              className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm border border-red-300"
+                            >
+                              {option}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {originalSpec && (
-                <div className="p-5">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Options:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {originalSpec.options.map((option, oIdx) => {
-                      const isProblematic =
-                        !isCorrect &&
-                        result.problematic_options?.includes(option);
+              {/* All Options */}
+              <div className="p-5">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Options:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {spec.options.map((option, oIdx) => {
+                    const isProblematic = spec.auditResult.problematic_options?.includes(option);
 
-                      return (
-                        <span
-                          key={oIdx}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                            isProblematic
-                              ? "bg-red-200 text-red-900 border-2 border-red-400"
-                              : isCorrect
-                                ? "bg-green-200 text-green-900 border border-green-300"
-                                : "bg-gray-100 text-gray-700 border border-gray-300"
-                          }`}
-                        >
-                          {option}
-                        </span>
-                      );
-                    })}
-                  </div>
+                    return (
+                      <span
+                        key={oIdx}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                          isProblematic
+                            ? "bg-red-200 text-red-900 border-2 border-red-400"
+                            : isCorrect
+                              ? "bg-green-200 text-green-900 border border-green-300"
+                              : "bg-gray-100 text-gray-700 border border-gray-300"
+                        }`}
+                      >
+                        {option}
+                      </span>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
       </div>
 
+      {/* Status Message */}
+      {allCorrect ? (
+        <div className="mb-6 p-4 bg-green-50 border-2 border-green-300 rounded-lg">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="text-green-600" size={24} />
+            <div>
+              <p className="font-semibold text-green-900">All specifications are correct!</p>
+              <p className="text-sm text-green-700 mt-1">
+                All {correctCount} specifications have been verified and are ready for the next stage.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+          <div className="flex items-center gap-3">
+            <XCircle className="text-red-600" size={24} />
+            <div>
+              <p className="font-semibold text-red-900">Issues found in {incorrectCount} specification(s)</p>
+              <p className="text-sm text-red-700 mt-1">
+                Review the highlighted specifications above. You can proceed, but consider fixing the issues first.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Next Step Button - SMALLER AND AT BOTTOM */}
       {showNextStepButton && (
-        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-8">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">Next Step</h3>
-          <p className="text-blue-800 mb-4">
-            Proceed to Stage 2 to extract buyer specifications from Sellers websites
-          </p>
+        <div className="mt-8">
           <button
             onClick={onProceedToStage2}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition text-sm"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={18} />
             Extract Buyer ISQs using Website Benchmarking
           </button>
+          <p className="text-xs text-gray-500 mt-2">
+            Proceed to Stage 2 to extract buyer specifications from sellers' websites
+          </p>
         </div>
       )}
     </div>
   );
+}
+
+// Helper function (same as in api.ts)
+function isSemanticallySimilar(spec1: string, spec2: string): boolean {
+  const normalize = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]/g, ' ');
+  const norm1 = normalize(spec1);
+  const norm2 = normalize(spec2);
+  
+  if (norm1 === norm2) return true;
+  if (norm1.includes(norm2) || norm2.includes(norm1)) return true;
+  
+  return false;
 }
