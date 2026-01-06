@@ -59,7 +59,7 @@ export default function URLInput({ onSubmit, loading = false }: URLInputProps) {
         <Globe className="text-blue-600" size={28} />
         <div>
           <h2 className="text-xl font-bold text-gray-900">Stage 2: Website Benchmarking</h2>
-          <p className="text-gray-600 text-sm">Add Sellers URLs to extract ISQs</p>
+          <p className="text-gray-600 text-sm">Add URLs to extract ISQs</p>
         </div>
       </div>
 
