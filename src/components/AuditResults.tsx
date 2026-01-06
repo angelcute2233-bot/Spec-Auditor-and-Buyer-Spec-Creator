@@ -290,7 +290,7 @@ export default function AuditResults({
         </div>
       ) : (
         <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded">
-          < className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <XCircle className="text-red-600" size={16} />
             <div>
               <p className="font-medium text-red-900 text-sm">Issues found in {incorrectCount} specification(s)</p>
