@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import type { Stage1Output, ISQ } from "../types";
+import type { Stage1Output, ISQ, AuditResult, UploadedSpec } from "../types";
 
 interface CommonSpecItem {
   spec_name: string;
@@ -12,6 +12,94 @@ interface BuyerISQItem {
   spec_name: string;
   options: string[];
   category: "Primary" | "Secondary";
+}
+
+export function generateAuditExcel(
+  mcatName: string,
+  auditResults: AuditResult[],
+  originalSpecs: UploadedSpec[]
+) {
+  const workbook = XLSX.utils.book_new();
+
+  const auditData: unknown[] = auditResults.map((result) => {
+    const spec = originalSpecs.find((s) => s.spec_name === result.specification);
+    return {
+      "Specification Name": result.specification,
+      "Status": result.status === "correct" ? "CORRECT" : "INCORRECT",
+      "Tier": spec?.tier || "N/A",
+      "Input Type": spec?.input_type || "N/A",
+      "Options (Comma Separated)": spec?.options.join(", ") || "",
+      "Total Options": spec?.options.length || 0,
+      "Issues Found": result.explanation || "None",
+      "Problematic Options": result.problematic_options?.join(", ") || "None"
+    };
+  });
+
+  const sheet = XLSX.utils.json_to_sheet(auditData);
+  XLSX.utils.book_append_sheet(workbook, sheet, "Audit Results");
+
+  const fileName = `${mcatName}_Audit_${new Date().toISOString().split("T")[0]}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+}
+
+export function generateCombinedExcel(
+  mcatName: string,
+  auditResults: AuditResult[],
+  originalSpecs: UploadedSpec[],
+  isqs: { config: ISQ; keys: ISQ[]; buyers: ISQ[] }
+) {
+  const workbook = XLSX.utils.book_new();
+
+  const auditData: unknown[] = auditResults.map((result) => {
+    const spec = originalSpecs.find((s) => s.spec_name === result.specification);
+    return {
+      "Specification Name": result.specification,
+      "Status": result.status === "correct" ? "CORRECT" : "INCORRECT",
+      "Tier": spec?.tier || "N/A",
+      "Input Type": spec?.input_type || "N/A",
+      "Options (Comma Separated)": spec?.options.join(", ") || "",
+      "Total Options": spec?.options.length || 0,
+      "Issues Found": result.explanation || "None",
+      "Problematic Options": result.problematic_options?.join(", ") || "None"
+    };
+  });
+
+  const auditSheet = XLSX.utils.json_to_sheet(auditData);
+  XLSX.utils.book_append_sheet(workbook, auditSheet, "Stage 1 - Audit");
+
+  const stage2ISQs: unknown[] = [
+    {
+      "ISQ Type": "Config",
+      "ISQ Name": isqs.config.name,
+      "Options (Comma Separated)": isqs.config.options.join(", "),
+      "Total Options": isqs.config.options.length,
+    },
+    ...isqs.keys.map((k, i) => ({
+      "ISQ Type": "Key",
+      "ISQ Name": k.name,
+      "Options (Comma Separated)": k.options.join(", "),
+      "Total Options": k.options.length,
+      "Rank": i + 1,
+    })),
+  ];
+
+  const stage2Sheet = XLSX.utils.json_to_sheet(stage2ISQs);
+  XLSX.utils.book_append_sheet(workbook, stage2Sheet, "Stage 2 - ISQs");
+
+  const buyerISQs: unknown[] = isqs.buyers.map((b, idx) => ({
+    "Rank": idx + 1,
+    "Spec Name": b.name,
+    "Options (Comma Separated)": b.options.join(", "),
+    "Total Options": b.options.length,
+  }));
+
+  if (buyerISQs.length > 0) {
+    const stage3Sheet = XLSX.utils.json_to_sheet(buyerISQs);
+    XLSX.utils.book_append_sheet(workbook, stage3Sheet, "Stage 3 - Buyer ISQs");
+  }
+
+  const fileName = `${mcatName}_Complete_${new Date().toISOString().split("T")[0]}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
 }
 
 export function generateExcelFile(

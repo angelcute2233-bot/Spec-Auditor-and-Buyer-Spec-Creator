@@ -7,12 +7,14 @@ interface AuditResultsProps {
   originalSpecs: UploadedSpec[];
   onProceedToStage2: () => void;
   onReplaceSpec?: (specName: string, correctedOptions: string[]) => void;
+  showNextStepButton?: boolean;
 }
 
 export default function AuditResults({
   auditResults,
   originalSpecs,
   onProceedToStage2,
+  showNextStepButton = true,
 }: AuditResultsProps) {
   const [expandedSpecs, setExpandedSpecs] = useState<Set<string>>(new Set());
 
@@ -156,19 +158,21 @@ export default function AuditResults({
         })}
       </div>
 
-      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-8">
-        <h3 className="text-lg font-semibold text-blue-900 mb-3">Next Step</h3>
-        <p className="text-blue-800 mb-4">
-          Proceed to Stage 2 to extract buyer specifications from Sellers websites
-        </p>
-        <button
-          onClick={onProceedToStage2}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition"
-        >
-          <RefreshCw size={20} />
-          Extract Buyer ISQs using Website Benchmarking
-        </button>
-      </div>
+      {showNextStepButton && (
+        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">Next Step</h3>
+          <p className="text-blue-800 mb-4">
+            Proceed to Stage 2 to extract buyer specifications from Sellers websites
+          </p>
+          <button
+            onClick={onProceedToStage2}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition"
+          >
+            <RefreshCw size={20} />
+            Extract Buyer ISQs using Website Benchmarking
+          </button>
+        </div>
+      )}
     </div>
   );
 }

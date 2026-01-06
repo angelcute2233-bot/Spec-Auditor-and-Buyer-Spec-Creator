@@ -5,6 +5,7 @@ import URLInput from "./components/URLInput";
 import Stage2Results from "./components/Stage2Results";
 import Stage3Results from "./components/Stage3Results";
 import { auditSpecificationsWithGemini, extractISQWithGemini } from "./utils/api";
+import { generateAuditExcel, generateCombinedExcel } from "./utils/excel";
 import type { AuditInput as AuditInputType, AuditResult, UploadedSpec, ISQ, InputData } from "./types";
 import { Download, RefreshCw } from "lucide-react";
 
@@ -97,6 +98,10 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadStage1Excel = () => {
+    generateAuditExcel(mcatName, auditResults, originalSpecs);
+  };
+
   const handleDownloadStage1JSON = () => {
     downloadJSON({ audit_results: auditResults, specifications: originalSpecs }, "stage1_audit.json");
   };
@@ -109,6 +114,11 @@ function App() {
   const handleDownloadStage3JSON = () => {
     if (!isqs) return;
     downloadJSON({ buyer_isqs: isqs.buyers }, "stage3_buyer_isqs.json");
+  };
+
+  const handleDownloadCombinedExcel = () => {
+    if (!isqs) return;
+    generateCombinedExcel(mcatName, auditResults, originalSpecs, isqs);
   };
 
   return (
@@ -218,14 +228,15 @@ function App() {
                     auditResults={auditResults}
                     originalSpecs={originalSpecs}
                     onProceedToStage2={() => {}}
+                    showNextStepButton={false}
                   />
                   <div className="mt-8 pt-8 border-t border-gray-200">
                     <button
-                      onClick={handleDownloadStage1JSON}
+                      onClick={handleDownloadStage1Excel}
                       className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition"
                     >
                       <Download size={20} />
-                      Download Stage 1 Audit Results
+                      Download Stage 1 Audit Results (Excel)
                     </button>
                   </div>
                 </div>
@@ -240,7 +251,7 @@ function App() {
                       className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition"
                     >
                       <Download size={20} />
-                      Download Stage 2 ISQs
+                      Download Stage 2 ISQs (JSON)
                     </button>
                   </div>
                 </div>
@@ -281,13 +292,20 @@ function App() {
                     </div>
                   )}
 
-                  <div className="pt-8 border-t border-gray-200">
+                  <div className="pt-8 border-t border-gray-200 space-y-4">
+                    <button
+                      onClick={handleDownloadCombinedExcel}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition"
+                    >
+                      <Download size={20} />
+                      Download Complete Analysis (Excel - All Stages)
+                    </button>
                     <button
                       onClick={handleDownloadStage3JSON}
                       className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold rounded-lg hover:from-amber-700 hover:to-amber-800 transition"
                     >
                       <Download size={20} />
-                      Download Stage 3 Buyer ISQs
+                      Download Stage 3 Buyer ISQs (JSON)
                     </button>
                   </div>
                 </div>
