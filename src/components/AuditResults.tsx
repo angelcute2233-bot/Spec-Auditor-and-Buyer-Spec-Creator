@@ -27,14 +27,16 @@ export default function AuditResults({
     setExpandedSpecs(newExpanded);
   };
 
-  // Categorize specs by tier
-  const configSpecs = originalSpecs.filter(spec => spec.tier === "Config");
-  const keySpecs = originalSpecs.filter(spec => spec.tier === "Key");
-  const regularSpecs = originalSpecs.filter(spec => spec.tier === "Regular");
-
-  // Merge audit results with original specs
-  const getMergedSpecs = (specs: UploadedSpec[]) => {
+  // Categorize specs by tier (Convert Primary/Secondary/Tertiary to Config/Key/Regular)
+  const categorizeSpecs = (specs: UploadedSpec[]) => {
     return specs.map(spec => {
+      let displayTier = spec.tier || "Regular";
+      
+      // Convert tier names for display
+      if (spec.tier === "Primary") displayTier = "Config";
+      if (spec.tier === "Secondary") displayTier = "Key";
+      if (spec.tier === "Tertiary") displayTier = "Regular";
+      
       const matchingResult = auditResults.find(r => 
         r.specification.toLowerCase() === spec.spec_name.toLowerCase() ||
         isSemanticallySimilar(r.specification, spec.spec_name)
@@ -42,6 +44,7 @@ export default function AuditResults({
       
       return {
         ...spec,
+        displayTier, // Use converted tier for display
         auditResult: matchingResult || {
           specification: spec.spec_name,
           status: "correct",
@@ -52,13 +55,15 @@ export default function AuditResults({
     });
   };
 
-  const mergedConfigSpecs = getMergedSpecs(configSpecs);
-  const mergedKeySpecs = getMergedSpecs(keySpecs);
-  const mergedRegularSpecs = getMergedSpecs(regularSpecs);
+  const allDisplaySpecs = categorizeSpecs(originalSpecs);
+  
+  // Filter by converted tiers
+  const configSpecs = allDisplaySpecs.filter(spec => spec.displayTier === "Config");
+  const keySpecs = allDisplaySpecs.filter(spec => spec.displayTier === "Key");
+  const regularSpecs = allDisplaySpecs.filter(spec => spec.displayTier === "Regular");
 
-  const allSpecs = [...mergedConfigSpecs, ...mergedKeySpecs, ...mergedRegularSpecs];
-  const correctCount = allSpecs.filter(s => s.auditResult.status === "correct").length;
-  const incorrectCount = allSpecs.filter(s => s.auditResult.status === "incorrect").length;
+  const correctCount = allDisplaySpecs.filter(s => s.auditResult.status === "correct").length;
+  const incorrectCount = allDisplaySpecs.filter(s => s.auditResult.status === "incorrect").length;
   const allCorrect = incorrectCount === 0;
 
   // Component to render specification card
@@ -67,7 +72,7 @@ export default function AuditResults({
     const isExpanded = expandedSpecs.has(spec.spec_name);
     const hasIssues = !isCorrect && spec.auditResult.explanation;
 
-    // Get color based on tier
+    // Get color based on display tier
     const getTierColor = (tier: string) => {
       switch(tier) {
         case "Config": return "purple";
@@ -77,22 +82,14 @@ export default function AuditResults({
       }
     };
 
-    const tierColor = getTierColor(spec.tier || "Regular");
-    const bgColors = {
-      purple: isCorrect ? "bg-purple-50" : "bg-red-50",
-      blue: isCorrect ? "bg-blue-50" : "bg-red-50",
-      gray: isCorrect ? "bg-gray-50" : "bg-red-50"
-    };
+    const tierColor = getTierColor(spec.displayTier);
     
-    const borderColors = {
-      purple: isCorrect ? "border-purple-200" : "border-red-300",
-      blue: isCorrect ? "border-blue-200" : "border-red-300",
-      gray: isCorrect ? "border-gray-200" : "border-red-300"
-    };
-
     return (
       <div
-        className={`border rounded mb-3 overflow-hidden ${bgColors[tierColor]} ${borderColors[tierColor]}`}
+        className={`border rounded mb-3 overflow-hidden ${isCorrect ? 
+          tierColor === "purple" ? "bg-purple-50" : 
+          tierColor === "blue" ? "bg-blue-50" : "bg-gray-50"
+          : "bg-red-50"}`}
       >
         {/* Specification Header */}
         <div className={`p-3 ${isCorrect ? "bg-white" : "bg-red-50"}`}>
@@ -120,11 +117,16 @@ export default function AuditResults({
                     tierColor === "blue" ? "bg-blue-100 text-blue-800" :
                     "bg-gray-100 text-gray-800"
                   }`}>
-                    {spec.tier || "Regular"}
+                    {spec.displayTier}
                   </span>
                   <span className="text-xs text-gray-500">
                     {spec.options.length} options
                   </span>
+                  {spec.input_type && (
+                    <span className="text-xs text-gray-500">
+                      • {spec.input_type}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -226,48 +228,48 @@ export default function AuditResults({
       </div>
 
       {/* Config Specifications */}
-      {mergedConfigSpecs.length > 0 && (
+      {configSpecs.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-4 h-4 bg-purple-500 rounded"></div>
             <h3 className="text-md font-bold text-gray-900">Config Specifications</h3>
             <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs">
-              {mergedConfigSpecs.length}
+              {configSpecs.length}
             </span>
           </div>
-          {mergedConfigSpecs.map((spec, idx) => (
+          {configSpecs.map((spec, idx) => (
             <SpecCard key={idx} spec={spec} index={idx} />
           ))}
         </div>
       )}
 
       {/* Key Specifications */}
-      {mergedKeySpecs.length > 0 && (
+      {keySpecs.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-4 h-4 bg-blue-500 rounded"></div>
             <h3 className="text-md font-bold text-gray-900">Key Specifications</h3>
             <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-              {mergedKeySpecs.length}
+              {keySpecs.length}
             </span>
           </div>
-          {mergedKeySpecs.map((spec, idx) => (
+          {keySpecs.map((spec, idx) => (
             <SpecCard key={idx} spec={spec} index={idx} />
           ))}
         </div>
       )}
 
       {/* Regular Specifications */}
-      {mergedRegularSpecs.length > 0 && (
+      {regularSpecs.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-4 h-4 bg-gray-500 rounded"></div>
             <h3 className="text-md font-bold text-gray-900">Regular Specifications</h3>
             <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-              {mergedRegularSpecs.length}
+              {regularSpecs.length}
             </span>
           </div>
-          {mergedRegularSpecs.map((spec, idx) => (
+          {regularSpecs.map((spec, idx) => (
             <SpecCard key={idx} spec={spec} index={idx} />
           ))}
         </div>
@@ -288,7 +290,7 @@ export default function AuditResults({
         </div>
       ) : (
         <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded">
-          <div className="flex items-center gap-2">
+          < className="flex items-center gap-2">
             <XCircle className="text-red-600" size={16} />
             <div>
               <p className="font-medium text-red-900 text-sm">Issues found in {incorrectCount} specification(s)</p>
