@@ -77,7 +77,7 @@ export default function URLInput({ onSubmit, loading = false }: URLInputProps) {
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <label className="text-sm font-medium text-gray-700">Sellers URLs</label>
+            <label className="text-sm font-medium text-gray-700">Websites URLs</label>
             <button
               type="button"
               onClick={addUrl}
