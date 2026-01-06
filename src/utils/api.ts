@@ -242,6 +242,7 @@ function buildAuditPrompt(input: AuditInput): string {
   return `ou are a STRICT industrial specification auditor. Your task is to find REAL problems.
 
 MCAT Name: ${input.mcat_name}
+Think about what specifications make sense for this type of product.
 
 Specifications to Audit:
 ${specsText}
