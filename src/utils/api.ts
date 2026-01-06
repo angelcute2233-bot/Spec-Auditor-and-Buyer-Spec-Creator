@@ -253,6 +253,7 @@ Task:
   • Irrelevance to the specification or MCAT
   • Duplicates (exact duplicates or same value listed multiple times) 
    Example: "SS304", "ss304" → INCORRECT (duplicate, just different case)
+   Example: "2mm", "2 mm", "2.0mm" → INCORRECT (same value, different formatting)
   • Overlapping values (e.g., same measurement in multiple separate options like "1219 mm" AND "4 ft" as separate entries)
 
 Rules:
